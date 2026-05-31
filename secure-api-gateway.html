@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure API Gateway with CFG Validation</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,700;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f4f5f2; --surface: #ffffff; --border: #e0e2d8;
+    --text-primary: #181a16; --text-secondary: #575a50; --text-muted: #979a90;
+    --accent: #2a5c3f; --accent-light: #eaf3ee; --accent-mid: #4a9e6e;
+    --warn: #7a3a1a; --warn-light: #fdf0ea;
+    --tag-bg: #ebebе6;
+    --serif: 'Libre Baskerville', Georgia, serif;
+    --sans: 'Inter', sans-serif;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text-primary); line-height: 1.6; font-size: 16px; }
+  nav { position: fixed; top: 0; left: 0; right: 0; background: rgba(244,245,242,0.93); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); z-index: 100; padding: 0 2rem; height: 58px; display: flex; align-items: center; justify-content: space-between; }
+  .nav-brand { font-family: var(--serif); font-size: 1.1rem; color: var(--accent); }
+  .nav-links { display: flex; gap: 2rem; }
+  .nav-links a { font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); text-decoration: none; letter-spacing: 0.07em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--accent); }
+  .hero { padding: 140px 2rem 80px; max-width: 920px; margin: 0 auto; animation: fadeUp 0.7s ease both; }
+  .hero-badge { display: inline-flex; align-items: center; gap: 0.5rem; background: var(--accent-light); color: var(--accent); font-size: 0.73rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; padding: 0.35rem 0.9rem; border-radius: 100px; margin-bottom: 1.8rem; }
+  .hero-badge::before { content: ''; width: 6px; height: 6px; background: var(--accent-mid); border-radius: 50%; }
+  .hero h1 { font-family: var(--serif); font-size: clamp(2.4rem, 5vw, 3.8rem); line-height: 1.15; margin-bottom: 1rem; }
+  .hero h1 em { font-style: italic; color: var(--accent); }
+  .hero-sub { font-size: 1.05rem; color: var(--text-secondary); max-width: 600px; line-height: 1.8; margin-bottom: 2.2rem; }
+  .hero-meta { display: flex; flex-wrap: wrap; gap: 1rem; font-size: 0.82rem; color: var(--text-muted); }
+  .hero-meta span { display: flex; align-items: center; gap: 0.4rem; }
+  .hero-meta strong { color: var(--text-secondary); }
+  .divider { max-width: 920px; margin: 0 auto; border: none; border-top: 1px solid var(--border); }
+  section { max-width: 920px; margin: 0 auto; padding: 64px 2rem; animation: fadeUp 0.5s ease both; }
+  .section-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; }
+  .section-title { font-family: var(--serif); font-size: clamp(1.5rem, 3vw, 2.1rem); color: var(--text-primary); margin-bottom: 1.4rem; line-height: 1.2; }
+  .section-body { font-size: 1rem; color: var(--text-secondary); line-height: 1.85; max-width: 700px; }
+  .overview-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.4rem; margin-top: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .oi-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .oi-value { font-size: 0.96rem; color: var(--text-primary); font-weight: 500; line-height: 1.55; }
+  .steps { margin-top: 2.4rem; display: flex; flex-direction: column; }
+  .step { display: grid; grid-template-columns: 48px 1fr; gap: 1.2rem; padding: 1.6rem 0; border-bottom: 1px solid var(--border); }
+  .step:last-child { border-bottom: none; }
+  .step-num { width: 36px; height: 36px; background: var(--accent-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: var(--serif); font-size: 1rem; color: var(--accent); flex-shrink: 0; margin-top: 2px; }
+  .step-content h4 { font-size: 0.97rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.35rem; }
+  .step-content p { font-size: 0.91rem; color: var(--text-secondary); line-height: 1.78; }
+  .step-tag { display: inline-block; background: #e8ebe5; color: var(--text-secondary); font-size: 0.71rem; font-weight: 500; padding: 0.2rem 0.6rem; border-radius: 4px; margin-top: 0.5rem; }
+  .verdict-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 2rem; }
+  .verdict-allow { background: var(--accent-light); border: 1px solid #b8ddc8; border-radius: 14px; padding: 1.8rem; }
+  .verdict-block { background: var(--warn-light); border: 1px solid #f5c4aa; border-radius: 14px; padding: 1.8rem; }
+  .verdict-label { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.9rem; }
+  .verdict-allow .verdict-label { color: var(--accent); }
+  .verdict-block .verdict-label { color: var(--warn); }
+  .verdict-flow { display: flex; flex-direction: column; gap: 0.5rem; }
+  .verdict-step { display: flex; align-items: center; gap: 0.7rem; font-size: 0.87rem; }
+  .verdict-allow .verdict-step { color: #1e4d30; }
+  .verdict-block .verdict-step { color: #7a3a1a; }
+  .vdot-allow { width: 7px; height: 7px; background: var(--accent-mid); border-radius: 50%; flex-shrink: 0; }
+  .vdot-block { width: 7px; height: 7px; background: #e07040; border-radius: 50%; flex-shrink: 0; }
+  .cfg-box { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; margin-top: 2rem; }
+  .cfg-box .cfg-title { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 1rem; }
+  .cfg-rule { display: flex; gap: 1rem; align-items: flex-start; padding: 0.8rem 0; border-bottom: 1px solid var(--border); font-size: 0.88rem; }
+  .cfg-rule:last-child { border-bottom: none; }
+  .cfg-lhs { font-family: monospace; font-size: 0.9rem; color: var(--accent); font-weight: 700; min-width: 120px; flex-shrink: 0; }
+  .cfg-rhs { color: var(--text-secondary); line-height: 1.6; }
+  .cfg-rhs code { background: #e8ebe5; padding: 0.1rem 0.4rem; border-radius: 3px; font-size: 0.82rem; color: var(--text-primary); }
+  .tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .tech-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.4rem 1.5rem; transition: border-color 0.2s, transform 0.2s; }
+  .tech-card:hover { border-color: var(--accent-mid); transform: translateY(-2px); }
+  .tc-role { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.4rem; }
+  .tc-name { font-size: 0.98rem; font-weight: 600; color: var(--text-primary); margin-bottom: 0.3rem; }
+  .tc-desc { font-size: 0.81rem; color: var(--text-secondary); line-height: 1.5; }
+  .outcomes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 1rem; margin-top: 2rem; }
+  .outcome-card { background: var(--accent-light); border: 1px solid #b8ddc8; border-radius: 14px; padding: 1.6rem; }
+  .oc-icon { font-size: 1.5rem; margin-bottom: 0.7rem; }
+  .oc-title { font-size: 0.88rem; font-weight: 600; color: var(--accent); margin-bottom: 0.4rem; }
+  .oc-desc { font-size: 0.84rem; color: #1e4d30; line-height: 1.6; }
+  footer { border-top: 1px solid var(--border); padding: 2.5rem 2rem; text-align: center; font-size: 0.82rem; color: var(--text-muted); }
+  footer strong { color: var(--text-secondary); }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 640px) { .verdict-grid, .overview-card { grid-template-columns: 1fr; } .nav-links { display: none; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">SecureGateway CFG</span>
+  <div class="nav-links">
+    <a href="#about">About</a>
+    <a href="#how">How It Works</a>
+    <a href="#cfg">CFG Validation</a>
+    <a href="#tech">Tech Stack</a>
+    <a href="#results">Results</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Security · Compiler Design Project</div>
+  <h1>Every request<br><em>verified</em> before entry.</h1>
+  <p class="hero-sub">A secure API gateway that uses Context-Free Grammar (CFG) validation to inspect and filter incoming API requests — blocking malformed, malicious, or unauthorized inputs before they ever reach the backend system.</p>
+  <div class="hero-meta">
+    <span>🔐 <strong>API Security · CFG</strong></span>
+    <span>🐍 <strong>Python · Flask</strong></span>
+    <span>🛡️ <strong>Input Validation · Threat Prevention</strong></span>
+  </div>
+</div>
+
+<hr class="divider">
+
+<section id="about">
+  <div class="section-label">Overview</div>
+  <h2 class="section-title">What is SecureGateway CFG?</h2>
+  <p class="section-body">APIs are the backbone of modern applications — but they are also a prime target for attackers. Malformed inputs, injection attacks, and unauthorized requests can compromise entire systems. This project builds a secure gateway layer that sits in front of any API and uses formal grammar rules (CFG) to validate every incoming request before it is processed — blocking threats at the entry point itself.</p>
+  <div class="overview-card">
+    <div class="overview-item">
+      <div class="oi-label">Problem</div>
+      <div class="oi-value">APIs are vulnerable to malformed inputs, injection attacks, and unauthorized access that can compromise backend systems and sensitive data.</div>
+    </div>
+    <div class="overview-item">
+      <div class="oi-label">Solution</div>
+      <div class="oi-value">A gateway layer powered by CFG rules that validates every incoming request — only well-formed, authorized requests pass through to the backend.</div>
+    </div>
+    <div class="overview-item">
+      <div class="oi-label">Approach</div>
+      <div class="oi-value">Context-Free Grammar defines valid request structures. A parser checks each request against these rules in real time before forwarding.</div>
+    </div>
+    <div class="overview-item">
+      <div class="oi-label">Use Case</div>
+      <div class="oi-value">General-purpose API protection — applicable to banking systems, healthcare APIs, e-commerce, or any system handling sensitive data.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="how">
+  <div class="section-label">System Workflow</div>
+  <h2 class="section-title">How It Works</h2>
+  <p class="section-body">Every incoming API request passes through a multi-stage validation pipeline before it is allowed to reach the backend — threats are caught and blocked early.</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>Request Interception</h4>
+        <p>The Flask-based gateway intercepts every incoming API request before it reaches the backend. No request bypasses the gateway — it acts as a mandatory checkpoint for all traffic.</p>
+        <span class="step-tag">Flask · Request Interceptor · Middleware</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>Input Extraction</h4>
+        <p>The gateway extracts all components of the request — URL parameters, headers, body payload, and query strings — for structured analysis against the grammar rules.</p>
+        <span class="step-tag">Request Parsing · Input Extraction</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>CFG Rule Matching</h4>
+        <p>The extracted input is run through a Context-Free Grammar parser. The CFG defines exactly what valid request structures look like — correct field formats, allowed values, and proper syntax for each endpoint.</p>
+        <span class="step-tag">CFG Parser · Grammar Rules · Python</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4>Threat Detection</h4>
+        <p>Any request that does not conform to the defined grammar is flagged as invalid. This catches SQL injection attempts, malformed tokens, unexpected field types, and unauthorized data patterns.</p>
+        <span class="step-tag">Injection Detection · Anomaly Flagging</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h4>Allow or Block Decision</h4>
+        <p>Valid requests that pass CFG validation are forwarded to the backend API. Invalid or malicious requests are immediately blocked and an appropriate error response is returned to the client.</p>
+        <span class="step-tag">Access Control · Allow / Block Response</span>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h4>Logging & Audit Trail</h4>
+        <p>All blocked requests are logged with details — timestamp, IP, request content, and the rule violated — creating an audit trail for security monitoring and analysis.</p>
+        <span class="step-tag">Security Logging · Audit Trail</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:2.5rem;">
+    <div class="section-label">Request Outcomes</div>
+    <div class="verdict-grid">
+      <div class="verdict-allow">
+        <div class="verdict-label">✅ Valid Request — Allowed</div>
+        <div class="verdict-flow">
+          <div class="verdict-step"><span class="vdot-allow"></span>Request arrives at gateway</div>
+          <div class="verdict-step"><span class="vdot-allow"></span>Input extracted and parsed</div>
+          <div class="verdict-step"><span class="vdot-allow"></span>CFG rules matched — valid structure</div>
+          <div class="verdict-step"><span class="vdot-allow"></span>Request forwarded to backend</div>
+          <div class="verdict-step"><span class="vdot-allow"></span>Backend processes and responds</div>
+        </div>
+      </div>
+      <div class="verdict-block">
+        <div class="verdict-label">🚫 Invalid Request — Blocked</div>
+        <div class="verdict-flow">
+          <div class="verdict-step"><span class="vdot-block"></span>Request arrives at gateway</div>
+          <div class="verdict-step"><span class="vdot-block"></span>Input extracted and parsed</div>
+          <div class="verdict-step"><span class="vdot-block"></span>CFG rule violation detected</div>
+          <div class="verdict-step"><span class="vdot-block"></span>Request blocked immediately</div>
+          <div class="verdict-step"><span class="vdot-block"></span>Error logged + 403 returned</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="cfg">
+  <div class="section-label">Core Concept</div>
+  <h2 class="section-title">CFG Validation — How It Protects</h2>
+  <p class="section-body">Context-Free Grammar (CFG) is a formal language concept from compiler design — typically used to define programming language syntax. Here, it is applied to define what valid API inputs look like, and a parser rejects anything that doesn't fit.</p>
+
+  <div class="cfg-box">
+    <div class="cfg-title">Example CFG Rules for API Validation</div>
+    <div class="cfg-rule">
+      <div class="cfg-lhs">REQUEST →</div>
+      <div class="cfg-rhs">Valid top-level structure: <code>METHOD</code> + <code>ENDPOINT</code> + <code>PAYLOAD</code></div>
+    </div>
+    <div class="cfg-rule">
+      <div class="cfg-lhs">METHOD →</div>
+      <div class="cfg-rhs">Only allowed HTTP verbs: <code>GET</code> | <code>POST</code> | <code>PUT</code> | <code>DELETE</code></div>
+    </div>
+    <div class="cfg-rule">
+      <div class="cfg-lhs">PAYLOAD →</div>
+      <div class="cfg-rhs">Body must be <code>JSON</code> with defined keys matching expected types (string, integer, etc.)</div>
+    </div>
+    <div class="cfg-rule">
+      <div class="cfg-lhs">FIELD_VALUE →</div>
+      <div class="cfg-rhs">Alphanumeric only — rejects <code>SQL keywords</code>, <code>script tags</code>, <code>special characters</code></div>
+    </div>
+    <div class="cfg-rule">
+      <div class="cfg-lhs">TOKEN →</div>
+      <div class="cfg-rhs">Auth token must match defined format — rejects malformed or tampered tokens</div>
+    </div>
+  </div>
+
+  <p class="section-body" style="margin-top:1.5rem;">Any request that doesn't satisfy these grammar rules — such as one containing SQL injection strings, unexpected field types, or missing required fields — is immediately rejected at the gateway before touching the backend.</p>
+</section>
+
+<hr class="divider">
+
+<section id="tech">
+  <div class="section-label">Technology</div>
+  <h2 class="section-title">Tech Stack</h2>
+  <p class="section-body">Built entirely in Python using Flask for the gateway layer and custom CFG parsing logic for validation.</p>
+  <div class="tech-grid">
+    <div class="tech-card">
+      <div class="tc-role">Language</div>
+      <div class="tc-name">Python</div>
+      <div class="tc-desc">Core language for gateway logic, CFG parser implementation, and request handling.</div>
+    </div>
+    <div class="tech-card">
+      <div class="tc-role">Web Framework</div>
+      <div class="tc-name">Flask</div>
+      <div class="tc-desc">Lightweight framework used to build the gateway server and define API route interception.</div>
+    </div>
+    <div class="tech-card">
+      <div class="tc-role">Validation Engine</div>
+      <div class="tc-name">CFG Parser</div>
+      <div class="tc-desc">Custom Context-Free Grammar parser that validates request structure against predefined grammar rules.</div>
+    </div>
+    <div class="tech-card">
+      <div class="tc-role">Parsing Library</div>
+      <div class="tc-name">NLTK / PLY</div>
+      <div class="tc-desc">Python parsing tools used to implement and apply the CFG validation rules on incoming data.</div>
+    </div>
+    <div class="tech-card">
+      <div class="tc-role">Data Handling</div>
+      <div class="tc-name">JSON / REST</div>
+      <div class="tc-desc">Handles structured JSON payloads from REST API requests — validates fields, types, and formats.</div>
+    </div>
+    <div class="tech-card">
+      <div class="tc-role">Security Layer</div>
+      <div class="tc-name">Input Sanitization</div>
+      <div class="tc-desc">Detects and blocks SQL injection, XSS patterns, malformed tokens, and unauthorized input formats.</div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section id="results">
+  <div class="section-label">Outcomes</div>
+  <h2 class="section-title">Results & Impact</h2>
+  <p class="section-body">The gateway successfully validated API requests in real time — blocking malicious and malformed inputs while allowing legitimate traffic to pass through without disruption.</p>
+  <div class="outcomes-grid">
+    <div class="outcome-card">
+      <div class="oc-icon">🛡️</div>
+      <div class="oc-title">Threat Interception</div>
+      <div class="oc-desc">Malformed and malicious requests blocked at the gateway — SQL injection patterns and invalid inputs rejected before reaching the backend.</div>
+    </div>
+    <div class="outcome-card">
+      <div class="oc-icon">✅</div>
+      <div class="oc-title">Valid Traffic Pass-Through</div>
+      <div class="oc-desc">Legitimate well-formed API requests passed validation smoothly and were forwarded to the backend without disruption.</div>
+    </div>
+    <div class="outcome-card">
+      <div class="oc-icon">📋</div>
+      <div class="oc-title">Audit Logging</div>
+      <div class="oc-desc">All blocked requests logged with full details — enabling security monitoring, pattern analysis, and future rule improvement.</div>
+    </div>
+    <div class="outcome-card">
+      <div class="oc-icon">⚙️</div>
+      <div class="oc-title">Compiler Concepts Applied</div>
+      <div class="oc-desc">Demonstrated real-world application of CFG — a core compiler design concept — to solve a practical cybersecurity problem.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p><strong>Secure API Gateway with CFG Validation</strong> &middot; Pragadeeshwari S G T &middot; B.Tech CSE, SRMIST</p>
+  <p style="margin-top:0.5rem;">Built with Python · Flask · Context-Free Grammar · Input Validation</p>
+</footer>
+
+</body>
+</html>
